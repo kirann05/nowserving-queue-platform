@@ -183,9 +183,9 @@ _To be added._
 
 | | |
 |---|---|
-| Customer ticket with Leave Now | _screenshot_ |
-| Owner queue dashboard | _screenshot_ |
-| Nearby discovery | _screenshot_ |
+| Customer ticket with Leave Now | <img width="466" height="778" alt="Leavenow" src="https://github.com/user-attachments/assets/fd849bb4-16be-4728-be72-44f97727d313" />|
+| Owner queue dashboard |<img width="1231" height="635" alt="Screenshot 2026-09-04 at 10 53 02 AM" src="https://github.com/user-attachments/assets/1afbd2fd-7693-45c2-aa01-edc4ee7a47bb" />|
+| Nearby discovery | <img width="834" height="652" alt="Screenshot 2026-09-04 at 10 53 54 AM" src="https://github.com/user-attachments/assets/5d2acf86-3db4-465f-a481-242a974c144f" />|
 
 ## Testing
 
