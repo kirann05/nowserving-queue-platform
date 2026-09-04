@@ -1,0 +1,121 @@
+/*
+ * build.gradle — the project's build script (Gradle, Groovy DSL).
+ *
+ * Two plugins do the heavy lifting:
+ *  - 'org.springframework.boot' packages the app as an executable jar and
+ *    provides tasks like `bootRun`.
+ *  - 'io.spring.dependency-management' imports Spring Boot's BOM (Bill Of
+ *    Materials), which is why most dependencies below have NO version number:
+ *    Boot picks versions that are tested to work together.
+ *
+ * NOTE: This project uses Spring Boot 4.x. If you read Boot 3.x tutorials,
+ * two cosmetic differences: the web starter is now 'spring-boot-starter-webmvc'
+ * (was 'spring-boot-starter-web'), and the single 'spring-boot-starter-test'
+ * has been split into per-starter test modules ('...-webmvc-test', etc.).
+ */
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '4.1.0'
+	id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'com.nowserving'
+version = '0.0.1-SNAPSHOT'
+
+java {
+	// Toolchains let Gradle find (or download) exactly Java 21, regardless of
+	// which JDK happens to be on the PATH. Reproducible builds, no "works on
+	// my machine".
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(21)
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	// --- Spring starters: each one is a curated bundle of libraries ---
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'      // Hibernate + Spring Data repositories
+	implementation 'org.springframework.boot:spring-boot-starter-flyway'        // runs SQL migrations on startup
+	implementation 'org.springframework.boot:spring-boot-starter-security'      // servlet security filter chain
+	implementation 'org.springframework.boot:spring-boot-starter-validation'    // Bean Validation (@Email, @NotBlank, ...)
+	implementation 'org.springframework.boot:spring-boot-starter-webmvc'        // embedded Tomcat + Spring MVC
+	// Sprint 2: WebSocket + STOMP messaging (the server can now PUSH — the
+	// browser holds a persistent two-way connection instead of polling).
+	implementation 'org.springframework.boot:spring-boot-starter-websocket'
+	// Sprint 2 (part two): Redis, used purely as a pub/sub bus so that
+	// several app instances can fan out to each other's WebSockets.
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
+	// Sprint 3. Web Push encryption + VAPID signing is genuinely hard crypto
+	// (ECDH, HKDF, AES-GCM) — not something to hand-roll. Zero transitive
+	// deps and uses the JDK's own HTTP client.
+	implementation 'com.interaso:webpush:1.2.0'
+	// Circuit breaker (PRD §3.6). Used programmatically rather than via the
+	// Spring Boot starter: fewer version-coupling surprises, and the state
+	// machine stays visible in our own code instead of behind an annotation.
+	implementation 'io.github.resilience4j:resilience4j-circuitbreaker:2.3.0'
+
+	// Sprint 6 — observability. Actuator exposes health/metrics endpoints;
+	// micrometer-registry-prometheus renders them in the text format
+	// Prometheus scrapes. You cannot operate what you cannot see.
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	implementation 'io.micrometer:micrometer-registry-prometheus'
+
+	// Production hardening — ShedLock. Our @Scheduled sweeps run on EVERY
+	// instance; with 2+ replicas that means duplicated work every minute.
+	// ShedLock takes a lock in Postgres so exactly one instance runs each job.
+	implementation 'net.javacrumbs.shedlock:shedlock-spring:6.6.0'
+	implementation 'net.javacrumbs.shedlock:shedlock-provider-jdbc-template:6.6.0'
+	implementation 'org.flywaydb:flyway-database-postgresql'                    // Flyway's Postgres-specific support
+
+	// Verifies GOOGLE's ID tokens (FR-1). Google signs them with keys it
+	// publishes at a public URL (a "JWKS"); this library fetches, caches and
+	// rotates those keys and checks the signature for us. We are only a
+	// CONSUMER of Google's tokens here — we still mint our own JWTs below.
+	implementation 'org.springframework.security:spring-security-oauth2-jose'
+
+	// --- JWT (jjwt): issue and verify the tokens our login endpoint returns ---
+	// api = the interfaces we code against; impl + jackson are runtime-only on
+	// purpose, so we can't accidentally couple our code to jjwt internals.
+	implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
+	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
+	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
+
+	// Lombok generates getters/setters/builders at compile time (compileOnly:
+	// it's an annotation processor, not a runtime library).
+	compileOnly 'org.projectlombok:lombok'
+	runtimeOnly 'org.postgresql:postgresql'                                     // JDBC driver
+	annotationProcessor 'org.projectlombok:lombok'
+
+	// --- Test dependencies ---
+	testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
+	testImplementation 'org.springframework.boot:spring-boot-starter-flyway-test'
+	testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
+	testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
+	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+
+	// Testcontainers spins up a REAL throwaway Postgres in Docker for the
+	// integration tests — the concurrency test in NS-8 is meaningless against
+	// an in-memory database like H2 (different locking behavior).
+	// Boot's BOM doesn't manage Testcontainers, so we import its own BOM
+	// (platform = "use this BOM's versions for this group's artifacts").
+	testImplementation platform('org.testcontainers:testcontainers-bom:1.21.3')
+	testImplementation 'org.testcontainers:postgresql'
+	testImplementation 'org.testcontainers:junit-jupiter'
+
+	testCompileOnly 'org.projectlombok:lombok'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+	testAnnotationProcessor 'org.projectlombok:lombok'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
+
+// Surface deprecation details during compilation (harmless to keep on).
+tasks.withType(JavaCompile).configureEach {
+	options.compilerArgs << '-Xlint:deprecation'
+}

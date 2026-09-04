@@ -1,0 +1,80 @@
+# Production overrides. Activated with SPRING_PROFILES_ACTIVE=prod.
+#
+# Everything here either tightens a default that is convenient in development
+# and dangerous in production, or fails fast on a missing secret.
+#
+# Note the `:?` syntax below: `${VAR:?}` means "required — refuse to start if
+# absent". Crashing at boot with a clear message beats running with a
+# forgeable JWT secret and finding out later.
+
+spring:
+  datasource:
+    url: ${DB_URL:?DB_URL is required}
+    username: ${DB_USERNAME:?}
+    password: ${DB_PASSWORD:?}
+    hikari:
+      # Sized for a small VM. More connections is not better: Postgres forks a
+      # process per connection, so an oversized pool starves the database.
+      maximum-pool-size: 10
+      minimum-idle: 2
+  jpa:
+    # Never true in production. Logging every statement is a performance drag
+    # and quietly writes user data into your logs.
+    show-sql: false
+    open-in-view: false
+  flyway:
+    enabled: true
+    # Refuse to start against a database whose applied migrations don't match
+    # this build — that mismatch means you are running the wrong code for
+    # the schema, and guessing is worse than stopping.
+    validate-on-migrate: true
+
+server:
+  # Behind Caddy/nginx, so trust their X-Forwarded-* headers. Without this the
+  # app thinks every request is http:// from the proxy's IP — which breaks
+  # generated links AND makes the rate limiter see one client, not thousands.
+  forward-headers-strategy: framework
+  shutdown: graceful
+  error:
+    # Never leak stack traces to users.
+    include-message: never
+    include-stacktrace: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  endpoint:
+    health:
+      show-details: never   # tighter than dev: no dependency detail to strangers
+
+logging:
+  level:
+    root: INFO
+    com.nowserving: INFO
+    # Hibernate SQL logging off — same reasoning as show-sql.
+    org.hibernate.SQL: WARN
+
+app:
+  # These are REQUIRED in production; the app refuses to boot without them.
+  jwt:
+    secret: ${JWT_SECRET:?JWT_SECRET is required in production}
+  push:
+    vapid:
+      public-key: ${VAPID_PUBLIC_KEY:}
+      private-key: ${VAPID_PRIVATE_KEY:}
+  google:
+    client-id: ${GOOGLE_CLIENT_ID:}
+  travel:
+    tomtom:
+      api-key: ${TOMTOM_API_KEY:}
+    # A real ceiling on paid routing calls. The PRD lists a surprise Maps bill
+    # as a HIGH risk; this is the code-level half of the mitigation (the other
+    # half is a hard cap in the provider's console).
+    monthly-call-budget: ${MAPS_MONTHLY_BUDGET:2000}
+  rate-limit:
+    requests-per-minute: ${RATE_LIMIT_RPM:30}
+  public-base-url: ${PUBLIC_BASE_URL:?}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:?}

@@ -1,0 +1,115 @@
+# Central Spring configuration.
+#
+# Pattern to notice: every secret/environment-specific value is written as
+#   ${ENV_VAR:local-dev-default}
+# The default keeps `git clone && ./gradlew bootRun` working with the
+# docker-compose database, while production overrides via real env vars.
+# This is the "no secrets committed; config via environment variables" rule
+# from the Definition of Done — the committed defaults are dev-only values.
+
+spring:
+  application:
+    name: nowserving-backend
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/nowserving} # 5433: see docker-compose.yml
+    username: ${DB_USERNAME:nowserving}
+    password: ${DB_PASSWORD:nowserving}
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6380}   # 6380 on the host — see docker-compose.yml
+
+  jpa:
+    hibernate:
+      # IMPORTANT: 'validate', never 'update'. Flyway owns the schema; Hibernate
+      # only CHECKS that our @Entity mappings match what Flyway created. If they
+      # drift, the app fails fast at startup instead of silently mutating the DB.
+      ddl-auto: validate
+    # Open Session In View keeps a DB session open for the whole HTTP request so
+    # views can lazily load entities. It hides N+1 query bugs and holds
+    # connections too long — a well-known trap. We return DTOs, so: off.
+    open-session-in-view: false
+
+  # Flyway runs every not-yet-applied script in src/main/resources/db/migration
+  # at startup, in version order (V1__, V2__, ...), and records what ran in its
+  # own flyway_schema_history table. Migrations are append-only: never edit an
+  # applied script — write a new one.
+  flyway:
+    enabled: true
+
+# Sprint 6 — observability (PRD §7.1's three pillars start here).
+management:
+  endpoints:
+    web:
+      exposure:
+        # Deliberately a SHORT list. Actuator can expose heapdump, env,
+        # and more — all of which leak configuration or memory contents to
+        # anyone who can reach the port. Expose what you monitor, nothing else.
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      # Shows which dependency is unhealthy (db, redis) instead of a bare
+      # "DOWN" that tells an on-call engineer nothing.
+      show-details: when-authorized
+      probes:
+        # Splits health into liveness (restart me) and readiness (send me
+        # traffic). Kubernetes needs both, and conflating them causes restart
+        # loops: a pod waiting on a slow database is NOT broken, just not ready.
+        enabled: true
+  metrics:
+    tags:
+      application: nowserving-backend
+
+app:
+  version: 0.3.0
+  # Base URL used when building the shareable join link for a queue. The
+  # /j/{token} page lives in the React frontend, so this is the FRONTEND's
+  # origin (Vite dev server). In production it becomes the real domain.
+  public-base-url: ${PUBLIC_BASE_URL:http://localhost:5173}
+
+  cors:
+    # Which browser origins may call this API (comma-separated env override).
+    # Both 5173 and 5174 are listed because Vite auto-bumps to 5174 whenever
+    # 5173 is already taken by another process — a routine local-dev
+    # occurrence, not a special case worth a separate env var each time.
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:5174}
+
+  jwt:
+    # HS256 needs a key of at least 256 bits (32 bytes). This default is for
+    # LOCAL DEV ONLY — any real deployment must set JWT_SECRET. If the secret
+    # leaks, anyone can forge tokens for any account.
+    secret: ${JWT_SECRET:dev-only-secret-change-me-0123456789abcdef}
+    expiry-hours: 24
+
+  google:
+    # FR-1. OAuth client id from Google Cloud Console — see
+    # docs/GOOGLE_OAUTH_SETUP.md.
+    #
+    # Committed on purpose. A client id is NOT a secret: it is embedded in
+    # the sign-in button and visible in any browser's view-source. Google
+    # documents it as public. (The client SECRET is a different thing — this
+    # flow never uses one, so there is none in this repo.)
+    #
+    # It is still a security control: GoogleOidcTokenVerifier rejects any
+    # Google token whose "aud" claim isn't exactly this id, which stops a
+    # token minted for someone else's app being replayed against us.
+    # Override per environment with GOOGLE_CLIENT_ID; empty switches
+    # Google sign-in off with a clear message.
+    client-id: ${GOOGLE_CLIENT_ID:795899187108-31igjjekajkrson7vr83f58fpsbuim5a.apps.googleusercontent.com}
+
+  rate-limit:
+    # Max requests per IP per minute on /public/** — NS-5's "someone will spam
+    # the public endpoint" defense. It must stop scripts without ever tripping
+    # on the app's own traffic.
+    #
+    # 30 was too low, and the failure was invisible: every open customer page
+    # polls (position, leave-now, venue, nearby), so a customer tab and an
+    # owner tab on one laptop — exactly a demo — cleared 30/min on their own
+    # and started getting 429s mid-flow. Behind NAT, a whole cafe shares one
+    # IP and would have hit it too.
+    #
+    # 240/min still ends a scripted flood in seconds while leaving an order of
+    # magnitude of headroom over anything the UI does.
+    requests-per-minute: ${RATE_LIMIT_RPM:240}

@@ -1,0 +1,11 @@
+# Keep the build context small and secrets out of the image.
+# Everything here would otherwise be shipped to the Docker daemon on every
+# build — slower, and a real leak risk for the config/ directory.
+.git
+.gradle
+build
+config/          # LOCAL SECRETS (VAPID private key) — must never enter an image
+docs
+*.md
+.DS_Store
+k8s

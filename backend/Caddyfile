@@ -1,0 +1,41 @@
+# Caddy: TLS + routing, in ten lines.
+#
+# Replace queue.example.com with your real domain (and the email — Let's
+# Encrypt uses it for expiry warnings). Point the domain's A record at your
+# server's IP BEFORE starting, because Caddy proves ownership over HTTP-01
+# and cannot get a certificate for a domain that doesn't resolve to it yet.
+
+{
+    email admin@example.com
+}
+
+queue.example.com {
+    # ORDER MATTERS: the more specific /api* rule must come first, or the
+    # catch-all below would swallow API calls and serve them the React app.
+    #
+    # Everything server-side lives under /api. Same-origin means no CORS
+    # preflight, no cookie/origin surprises, and one certificate.
+    handle /api* {
+        uri strip_prefix /api
+        reverse_proxy backend:8080
+    }
+
+    # WebSockets need the connection upgraded rather than proxied as plain
+    # HTTP. Caddy handles this automatically for reverse_proxy, but the path
+    # must be routed explicitly since it sits outside /api.
+    handle /ws* {
+        reverse_proxy backend:8080
+    }
+
+    # Everything else is the React app.
+    handle {
+        reverse_proxy frontend:80
+    }
+
+    encode gzip
+
+    # HSTS: after the first visit, browsers refuse to talk to this host over
+    # plain HTTP at all. Only enable once you're sure HTTPS works — it is
+    # sticky and hard to undo.
+    header Strict-Transport-Security "max-age=31536000; includeSubDomains"
+}

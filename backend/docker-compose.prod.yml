@@ -1,0 +1,101 @@
+# The whole product, one command.
+#
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Suitable for a single small VM, which the PRD (§6.3) explicitly calls a
+# legitimate way to host the live demo: "a single small VM running Docker
+# Compose is a legitimate, cheap way to host the live version, with the K8s
+# work living in the repo to demonstrate the skill."
+#
+# EVERY secret comes from a .env file sitting next to this one. Nothing
+# sensitive is written here, so this file is safe to commit — see
+# docs/DEPLOYMENT.md for the .env template.
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-nowserving}
+      POSTGRES_USER: ${DB_USER:-nowserving}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-nowserving}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    # NOT published to the host. The database is reachable only from the
+    # compose network — the single most valuable line in this file. A Postgres
+    # exposed to the internet is found by scanners within minutes.
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    # Also unpublished, and deliberately volume-less: everything we keep in
+    # Redis is ephemeral (fan-out, ETA cache, coarse locations).
+
+  backend:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      # Wait for genuine readiness, not just "the container started" —
+      # otherwise Flyway races an unready database and the app dies on boot.
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-nowserving}
+      DB_USERNAME: ${DB_USER:-nowserving}
+      DB_PASSWORD: ${DB_PASSWORD:?}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      TOMTOM_API_KEY: ${TOMTOM_API_KEY:-}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:?e.g. https://queue.example.com}
+      CORS_ALLOWED_ORIGINS: ${PUBLIC_BASE_URL:?}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health/readiness || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s   # a JVM plus Flyway migrations needs a moment
+
+  frontend:
+    build:
+      context: ../nowserving-frontend
+      args:
+        # Baked in at build time — see the frontend Dockerfile.
+        VITE_API_URL: ${PUBLIC_API_URL:?e.g. https://queue.example.com/api}
+        VITE_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+    restart: unless-stopped
+    depends_on: [backend]
+
+  caddy:
+    # Caddy terminates TLS and gets real certificates automatically from
+    # Let's Encrypt — no certbot, no cron renewal, no expired-cert outage.
+    # HTTPS is not optional here: Web Push, the Geolocation API and Google
+    # sign-in are ALL refused by browsers on plain http (localhost aside).
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data      # persists certificates across restarts
+      - caddy_config:/config
+    depends_on: [backend, frontend]
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

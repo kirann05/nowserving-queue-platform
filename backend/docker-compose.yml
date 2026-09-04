@@ -1,0 +1,59 @@
+# Local development infrastructure. Run with: docker compose up -d
+#
+# Only the database lives in Docker for now — the Spring app itself runs on
+# your machine via `./gradlew bootRun` so you get fast restarts and debugging.
+# (Containerizing the app itself is a later-sprint concern.)
+services:
+  postgres:
+    image: postgres:16
+    container_name: nowserving-postgres
+    environment:
+      POSTGRES_DB: nowserving
+      POSTGRES_USER: nowserving
+      # Fine for local dev; a real deployment injects this from a secret store.
+      POSTGRES_PASSWORD: nowserving
+    ports:
+      # host:container — 5433 on the host because another local project
+      # (savestash-db) already occupies 5432. Inside the container Postgres
+      # still runs on its standard 5432.
+      - "5433:5432"
+    volumes:
+      # A NAMED volume: data survives `docker compose down` and container
+      # rebuilds. `docker compose down -v` is the explicit "wipe my data" move.
+      - nowserving_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # Sprint doc's "likely problem #1": the app starting before Postgres is
+      # ready. The healthcheck gives other tools (and future services with
+      # `depends_on: condition: service_healthy`) a real readiness signal.
+      test: ["CMD-SHELL", "pg_isready -U nowserving -d nowserving"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Sprint 2: the message bus BETWEEN app instances.
+  #
+  # Why this container exists at all: a WebSocket connection is pinned to ONE
+  # server process. Run two copies of the app behind a load balancer and a
+  # customer's phone is attached to instance A, while the staff tablet that
+  # taps "Next" might be talking to instance B. B has no way to reach A's
+  # sockets. Redis is the shared shout-box: B publishes, every instance
+  # (including A) is subscribed and relays to its own sockets.
+  redis:
+    image: redis:7-alpine
+    container_name: nowserving-redis
+    ports:
+      # 6379 inside the container; 6380 on the host in case you already run
+      # a Redis for another project (same reason Postgres is on 5433).
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    # No volume on purpose: everything we keep in Redis is ephemeral
+    # (live fan-out messages). The durable truth lives in Postgres. Losing
+    # Redis must never lose a queue — see NFR "queue state is the source of
+    # truth in a durable store".
+
+volumes:
+  nowserving_pgdata:

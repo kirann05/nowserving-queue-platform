@@ -1,0 +1,117 @@
+# Sprint 6 — running NowServing on Kubernetes.
+#
+# Apply locally with minikube/k3s:
+#   kubectl apply -f k8s/
+#
+# Read this top-down: Secret (credentials) -> ConfigMap (settings) ->
+# Deployment (how to run pods) -> Service (how to reach them).
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: nowserving-secrets
+type: Opaque
+stringData:
+  # PLACEHOLDERS. Kubernetes Secrets are only base64-encoded, NOT encrypted —
+  # anyone with read access to the namespace can decode them. For anything
+  # real, use Sealed Secrets, External Secrets, or your cloud's secret
+  # manager. Committing actual values here would be the same mistake as
+  # committing the VAPID key.
+  DB_PASSWORD: "change-me"
+  JWT_SECRET: "change-me-at-least-32-bytes-long-000"
+  VAPID_PRIVATE_KEY: "change-me"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nowserving-config
+data:
+  DB_URL: "jdbc:postgresql://postgres:5432/nowserving"
+  DB_USERNAME: "nowserving"
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+  PUBLIC_BASE_URL: "http://localhost:5173"
+  CORS_ALLOWED_ORIGINS: "http://localhost:5173"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nowserving-backend
+  labels: { app: nowserving-backend }
+spec:
+  # THE PAYOFF OF SPRINT 2. Multiple replicas only work because WebSocket
+  # fan-out goes through Redis pub/sub — without it, a customer connected to
+  # pod A would never see an advance handled by pod B.
+  replicas: 2
+  selector:
+    matchLabels: { app: nowserving-backend }
+  template:
+    metadata:
+      labels: { app: nowserving-backend }
+      annotations:
+        # Tells Prometheus to scrape these pods (Sprint 6 observability).
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/actuator/prometheus"
+        prometheus.io/port: "8080"
+    spec:
+      containers:
+        - name: backend
+          image: nowserving-backend:latest
+          # For local minikube: use the image already built into its daemon
+          # instead of trying to pull from a registry that doesn't have it.
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef: { name: nowserving-config }
+            - secretRef: { name: nowserving-secrets }
+
+          # THREE PROBES, three different questions. Conflating them is the
+          # most common Kubernetes mistake in a Spring app.
+          #
+          # startup:   "has it finished booting?" — a JVM + Flyway migrations
+          #            can take 30s+. Without this, the liveness probe would
+          #            declare the pod dead and restart it, forever.
+          startupProbe:
+            httpGet: { path: /actuator/health/liveness, port: 8080 }
+            failureThreshold: 30
+            periodSeconds: 2
+          # liveness:  "is it wedged? restart it." Must NOT depend on the
+          #            database — a DB blip would otherwise restart every pod
+          #            at once and turn a small outage into a large one.
+          livenessProbe:
+            httpGet: { path: /actuator/health/liveness, port: 8080 }
+            periodSeconds: 10
+            failureThreshold: 3
+          # readiness: "should it receive traffic?" This one DOES check
+          #            dependencies — a pod that can't reach Postgres should be
+          #            taken out of the load balancer, not killed.
+          readinessProbe:
+            httpGet: { path: /actuator/health/readiness, port: 8080 }
+            periodSeconds: 5
+            failureThreshold: 2
+
+          resources:
+            # requests = what the scheduler reserves; limits = the hard cap.
+            # The Dockerfile's MaxRAMPercentage sizes the heap from the LIMIT,
+            # so these two settings have to be chosen together.
+            requests: { memory: "512Mi", cpu: "250m" }
+            limits: { memory: "1Gi", cpu: "1000m" }
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+      # Give in-flight requests time to finish on a rolling deploy.
+      terminationGracePeriodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nowserving-backend
+spec:
+  selector: { app: nowserving-backend }
+  ports:
+    - port: 8080
+      targetPort: 8080
+  type: ClusterIP

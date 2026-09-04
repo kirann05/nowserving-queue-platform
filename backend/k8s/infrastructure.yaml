@@ -1,0 +1,86 @@
+# Postgres + Redis for a LOCAL cluster (minikube / k3s / kind).
+#
+# In production you would not run your database this way — you'd use a managed
+# service (RDS, Cloud SQL) so that backups, failover and patching are somebody
+# else's job. This exists so the whole system can be demonstrated on one
+# laptop with `kubectl apply -f k8s/`.
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels: { app: postgres }
+  template:
+    metadata:
+      labels: { app: postgres }
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16
+          env:
+            - { name: POSTGRES_DB, value: nowserving }
+            - { name: POSTGRES_USER, value: nowserving }
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: nowserving-secrets, key: DB_PASSWORD }
+            # Postgres refuses to initialise into a non-empty directory, and
+            # a mounted volume always contains lost+found.
+            - { name: PGDATA, value: /var/lib/postgresql/data/pgdata }
+          ports: [{ containerPort: 5432 }]
+          volumeMounts:
+            - { name: pgdata, mountPath: /var/lib/postgresql/data }
+          readinessProbe:
+            exec: { command: ["pg_isready", "-U", "nowserving"] }
+            periodSeconds: 5
+  # A StatefulSet, not a Deployment: databases need stable identity and
+  # storage that survives a restart. This is the distinction between
+  # stateful and stateless workloads, and it's why the app itself is a
+  # Deployment while this is not.
+  volumeClaimTemplates:
+    - metadata: { name: pgdata }
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources: { requests: { storage: 2Gi } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+spec:
+  selector: { app: postgres }
+  ports: [{ port: 5432, targetPort: 5432 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: redis }
+  template:
+    metadata:
+      labels: { app: redis }
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports: [{ containerPort: 6379 }]
+          readinessProbe:
+            exec: { command: ["redis-cli", "ping"] }
+            periodSeconds: 5
+  # A plain Deployment with no volume: everything we keep in Redis is
+  # ephemeral by design (fan-out messages, coarse locations, ETA cache).
+  # Losing it costs a moment of freshness, never any queue data.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+spec:
+  selector: { app: redis }
+  ports: [{ port: 6379, targetPort: 6379 }]

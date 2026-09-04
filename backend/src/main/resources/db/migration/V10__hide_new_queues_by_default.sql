@@ -1,0 +1,15 @@
+-- V10 — safety: new restaurants must never auto-publish.
+--
+-- V9 defaulted listed_publicly to TRUE, reasoning that at the time every row
+-- in the database was a developer's own demo queue and a FALSE default would
+-- make the discovery page look broken. That reasoning stops holding the
+-- moment real owners can sign up: a business created while an owner is still
+-- testing their setup would be one Save-tap away from strangers finding it
+-- in public search before it's ready.
+--
+-- This flips the default for every FUTURE row only. Existing queues are left
+-- exactly as they are — this is a default, not a migration of data, because
+-- silently un-publishing a restaurant an owner already made public would be
+-- its own surprise. An owner can hide anything today via the venue-config
+-- panel's "Show my restaurant in public search" toggle.
+ALTER TABLE queues ALTER COLUMN listed_publicly SET DEFAULT FALSE;
