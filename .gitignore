@@ -1,0 +1,57 @@
+# --- Secrets and local config ---------------------------------------------
+# Real keys live in environment variables or in backend/config/, which is
+# ignored. The *.example files next to them show the shape without the values.
+.env
+.env.*
+!.env.example
+# Ignore the CONTENTS of config/, not the directory itself — git cannot
+# un-ignore a file inside an ignored directory, and the example has to ship.
+backend/config/*
+!backend/config/application-example.properties
+application-local.yml
+application-local.yaml
+application-local.properties
+application-secrets.yml
+*.pem
+*.key
+*.p12
+*.jks
+*.keystore
+
+# --- Build output ----------------------------------------------------------
+build/
+!gradle/wrapper/gradle-wrapper.jar
+.gradle/
+target/
+out/
+dist/
+*.class
+*.jar
+!gradle-wrapper.jar
+
+# --- Node ------------------------------------------------------------------
+node_modules/
+.vite/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Editors / OS ----------------------------------------------------------
+.idea
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+.settings/
+.project
+.classpath
+.DS_Store
+Thumbs.db
+
+# --- Logs and scratch ------------------------------------------------------
+*.log
+logs/
+tmp/
+.claude/
