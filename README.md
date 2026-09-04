@@ -4,7 +4,7 @@ NowServing is a real-time virtual queue and reservation platform I built around 
 
 Customers can join a line remotely, follow their position as it moves, and optionally share their location to get a traffic-aware "leave now" recommendation. Restaurant staff run the line from a dashboard that updates as customers join, arrive, and get served.
 
-> **Demo:** [Watch the demo](https://youtu.be/bfoX0gh2HCs)
+> **Demo:** [Watch the demo](https://youtu.be/WHatLISNyA4)
 
 ---
 
