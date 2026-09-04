@@ -1,0 +1,655 @@
+/*
+ * NowServing design system — one small file, no framework.
+ *
+ * Aesthetic: near-black canvas, hairline panel borders, monospace uppercase
+ * micro-labels, ONE glowing accent. The accent is amber — the color of a
+ * deli-counter "NOW SERVING" LED sign, which is literally what this product is.
+ *
+ * Everything hangs off CSS variables so the whole look can be retuned from
+ * this block.
+ */
+:root {
+  --bg: #0a0a0a;            /* page canvas */
+  --panel: #101010;         /* card/panel surface */
+  --panel-2: #161616;       /* hover / nested surface */
+  --border: #262626;        /* hairline borders */
+  --text: #f4f4f4;
+  --muted: #8f8f8f;
+  --accent: #fbbf24;        /* amber LED — CTAs and live numbers ONLY */
+  --accent-dim: #b45309;
+  /* Warm cream for restaurant NAMES. Deliberately not --text (a cold near
+     white that made every card read flat) and deliberately not --accent:
+     reusing the CTA yellow for headings makes nothing look clickable
+     because everything does. ~13.5:1 on --panel, so it stays accessible. */
+  --title: #f2e8d5;
+  /* The participating-venue title: the same cream pulled a few degrees
+     toward amber, so a NowServing card reads warmer without shouting. */
+  --title-live: #f7dfae;
+  --danger: #f87171;
+  --ok: #34d399;
+  --font-sans: -apple-system, "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body, #root { min-height: 100%; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  /* faint grid texture, like the reference site's blueprint feel */
+  background-image:
+    linear-gradient(rgba(38, 38, 38, 0.4) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(38, 38, 38, 0.4) 1px, transparent 1px);
+  background-size: 72px 72px;
+  background-position: -1px -1px;
+}
+
+/* ---------- typography ---------- */
+
+h1, h2, h3 { font-weight: 800; letter-spacing: -0.02em; }
+
+.display {
+  font-size: clamp(2rem, 6vw, 3.2rem);
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+/* the glowing amber number/word — the signature element */
+.glow {
+  color: var(--accent);
+  text-shadow: 0 0 18px rgba(251, 191, 36, 0.55), 0 0 60px rgba(251, 191, 36, 0.25);
+}
+
+/* monospace uppercase micro-label, e.g. "QUEUE / WALK-INS" */
+.micro {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ---------- layout ---------- */
+
+.shell { max-width: 1060px; margin: 0 auto; padding: 0 20px 80px; }
+
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 0; margin-bottom: 36px;
+  border-bottom: 1px solid var(--border);
+}
+
+.brand {
+  font-weight: 800; font-size: 1.05rem; letter-spacing: -0.01em;
+  color: var(--text); text-decoration: none;
+}
+.brand em { color: var(--accent); font-style: normal; }
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px;
+}
+
+.panel + .panel { margin-top: 16px; }
+
+.grid { display: grid; gap: 16px; }
+@media (min-width: 720px) { .grid.cols-2 { grid-template-columns: 1fr 1fr; } }
+
+.stack { display: flex; flex-direction: column; gap: 12px; }
+.row { display: flex; align-items: center; gap: 12px; }
+.row.spread { justify-content: space-between; }
+
+/* ---------- forms ---------- */
+
+label { display: block; }
+label .micro { display: block; margin-bottom: 6px; }
+
+input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 12px 14px;
+  font-size: 1rem;
+}
+input:focus { outline: none; border-color: var(--accent-dim); }
+
+/* ---------- buttons: pill, like the reference ---------- */
+
+/* The shape rule matches the COLOR classes directly (not just `button, .btn`)
+   so a React Router <Link> — which renders a plain <a> — gets the same pill
+   shape as a real <button> the moment it carries .btn-accent/.btn-ghost/etc.
+   Before this, a Link with only a color class rendered as an underlined
+   text link with no padding: the color classes set background/text colour,
+   but nothing gave it a button's box in the first place. */
+button, .btn, .btn-primary, .btn-accent, .btn-ghost, .btn-danger {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  font-family: var(--font-sans); font-size: 0.95rem; font-weight: 600;
+  padding: 11px 22px; border-radius: 999px; cursor: pointer;
+  border: 1px solid transparent; text-decoration: none;
+  transition: transform 0.05s, opacity 0.15s;
+}
+button:active { transform: scale(0.98); }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.btn-primary { background: var(--text); color: #0a0a0a; }
+.btn-accent  { background: var(--accent); color: #1a1200; box-shadow: 0 0 24px rgba(251,191,36,0.25); }
+.btn-ghost   { background: transparent; color: var(--text); border-color: var(--border); }
+.btn-danger  { background: transparent; color: var(--danger); border-color: var(--danger); }
+.btn-sm      { padding: 7px 14px; font-size: 0.85rem; }
+
+/* ---------- bits ---------- */
+
+.error {
+  border: 1px solid var(--danger); color: var(--danger);
+  border-radius: 8px; padding: 10px 14px; font-size: 0.9rem;
+}
+
+.badge {
+  font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.1em;
+  padding: 3px 10px; border-radius: 999px; border: 1px solid var(--border);
+  text-transform: uppercase;
+}
+.badge.open   { color: var(--ok); border-color: var(--ok); }
+.badge.closed { color: var(--danger); border-color: var(--danger); }
+
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+td { padding: 12px; border-bottom: 1px solid var(--border); }
+tr:last-child td { border-bottom: none; }
+
+a { color: var(--accent); }
+
+/* Focused single-card screens: join, booking, login, ticket.
+   Narrow ON PURPOSE — these are forms and one-answer screens, and a wide
+   form is a worse form. What was wrong before was the VERTICAL centring:
+   `align-items: center` over a full-viewport box left a small card hovering
+   in the middle of an empty screen with nothing above or below it. Anchoring
+   near the top (with the box still tall enough to keep short pages from
+   feeling stumpy) reads as deliberate instead of adrift. */
+.center-page {
+  min-height: 100dvh; display: flex; align-items: flex-start; justify-content: center;
+  padding: clamp(24px, 7vh, 72px) 20px 64px;
+}
+.center-page .panel { width: 100%; max-width: 460px; }
+
+/* the customer ticket — mobile-first, one big glowing number */
+.ticket-number {
+  font-size: clamp(6rem, 40vw, 11rem);
+  font-weight: 800; line-height: 1; text-align: center;
+}
+
+.qr-wrap {
+  background: #fff; padding: 14px; border-radius: 10px;
+  display: inline-block; line-height: 0;
+}
+
+.spin {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid var(--border); border-top-color: var(--accent);
+  animation: spin 0.8s linear infinite; display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── V9: discovery ─────────────────────────────────────────────────────── */
+
+/* Wider than .center-page: a list of restaurants wants to breathe, whereas a
+   single ticket wants to be one glanceable column.
+
+   640px was too literal about that. On a 1440px screen it left ~800px of
+   dead space either side and turned 30 results into an endless one-per-row
+   ribbon. The page shell is now a real container, and the RESULTS inside it
+   flow into columns as the width allows — while the hero and search stay
+   centred and narrow, because a full-width search box looks lost. */
+.discover-page {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 32px clamp(16px, 4vw, 32px) 64px;
+}
+
+/* Hero, search, location prompt: readable measure, centred in the container.
+   Applied via .discover-narrow so the wide grid below can escape it. */
+.discover-narrow { max-width: 620px; margin-left: auto; margin-right: auto; }
+
+.discover-header { text-align: center; margin-bottom: 24px; }
+
+/* The results grid. auto-fit + minmax means the browser decides the column
+   count from the space available — one column on a phone, two on a tablet,
+   three on a wide desktop — with no breakpoint list to maintain. */
+.venue-grid {
+  display: grid;
+  gap: 16px;
+  /* auto-FILL, not auto-fit: auto-fit collapses the empty tracks, so a
+     single result would stretch to the full 1120px and look like a bug.
+     auto-fill keeps the column rhythm, and one card stays card-sized. */
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  align-items: start;
+}
+/* The homepage preview is a shorter, denser row of the same cards. */
+.venue-grid-compact { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+
+/* "Location is on" confirmation strip — quieter than the amber prompt it
+   replaces, because it reports a settled state rather than asking for one. */
+.locate-confirmed {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 14px;
+  background: var(--panel);
+}
+.locate-confirmed .micro { color: var(--ok); }
+
+/* Card actions. In a 320px grid column three flex:1 buttons each got ~90px
+   and broke their labels mid-word ("View / restaurant"). Letting them size
+   to their text and wrap as whole buttons keeps every label on one line. */
+.venue-actions { flex-wrap: wrap; gap: 8px; }
+.venue-actions > a { flex: 1 1 auto; text-align: center; white-space: nowrap; }
+
+.venue-card {
+  transition: border-color 0.15s ease, transform 0.15s ease;
+  /* A flex item's default min-width is its CONTENT width, so an unbroken
+     OSM cuisine string made the card refuse to shrink and spill its badges
+     over the card beside it. This is the fix for that whole class of bug. */
+  min-width: 0;
+  gap: 6px;
+}
+.venue-card:hover { border-color: var(--accent); }
+.venue-card > * { min-width: 0; }
+
+/* Equal heights across a row. `align-items: start` on the grid was
+   defeating `height: 100%`, so cards ended at ragged heights and the
+   action buttons never lined up. Stretch, then push actions to the floor. */
+.venue-grid { align-items: stretch; }
+/* `.panel + .panel { margin-top: 16px }` is a stacking rule from when these
+   were a vertical list. In a grid it gives every card BUT the first a 16px
+   top margin, so the first card in the top row floated 16px above its two
+   neighbours. Grid `gap` already owns the spacing here. */
+.venue-grid .panel + .panel { margin-top: 0; }
+.venue-grid .venue-card { height: 100%; }
+.venue-grid .venue-card > .venue-actions:last-child { margin-top: auto; }
+
+.venue-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+.venue-card-title {
+  margin: 0;
+  min-width: 0;
+  color: var(--title);
+  line-height: 1.25;
+  /* Long names wrap to at most two lines and then ellipsize, so one
+     unusually long restaurant can't set the height of an entire row. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.venue-card-head .badge { flex: none; }
+
+/* Facts under the name. Deliberately NOT .micro: that style is uppercase
+   with 0.14em tracking, which turned "Thai · Salad · 2 mi" into shouting
+   and was a large part of why the list read as raw data. */
+.venue-meta {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.venue-meta .venue-open { color: var(--ok); }
+
+/* The "not on NowServing" footnote — present for honesty, recessive by
+   design, because it is true of nearly every card on the page. */
+.venue-note {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+  opacity: 0.55;
+}
+
+.venue-stats { display: flex; gap: 24px; align-items: flex-end; flex-wrap: wrap; }
+.venue-stat-value { font-size: 1.6rem; font-weight: 800; line-height: 1.1; }
+
+/* A participating restaurant is the point of the page; it should be
+   obvious at a glance among thirty that are not. */
+.venue-card-live .venue-card-title { color: var(--title-live); }
+.venue-card-live {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  background:
+    linear-gradient(to bottom, color-mix(in srgb, var(--accent) 6%, transparent), transparent 120px),
+    var(--panel);
+}
+.venue-card-live:hover { border-color: var(--accent); }
+
+/* ── V9: ticket hero ───────────────────────────────────────────────────── */
+
+/* The stacked "Estimated turn / Current drive" blocks. Deliberately quiet:
+   they are context for the one loud number below them, not competitors. */
+.hero-stat { text-align: center; }
+
+.leave-now-banner {
+  width: 100%;
+  padding: 14px 10px;
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  animation: leave-now-pulse 2s ease-in-out infinite;
+}
+@keyframes leave-now-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.72; }
+}
+
+/* Respect the OS setting — a pulsing banner is exactly the kind of motion
+   that triggers vestibular discomfort, and the message is legible without it. */
+@media (prefers-reduced-motion: reduce) {
+  .leave-now-banner { animation: none; }
+}
+
+/* The ticket number shrinks now that it shares the screen with the turn
+   window, the drive time and the leave-by answer. */
+.ticket-number { font-size: clamp(4rem, 26vw, 7rem); }
+
+/* Checkbox + label rows (owner settings). The input must not stretch or
+   shrink, or the label text wraps around it on a narrow phone. */
+.toggle-row {
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-start;
+  cursor: pointer;
+}
+.toggle-row input[type='checkbox'] {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+.toggle-row span { flex: 1; text-align: left; }
+
+/* Location prompt (replaces a red error box when geolocation hasn't been
+   granted yet) and the [All]/[Joinable now] filter group. */
+.locate-prompt { border-color: var(--accent); }
+
+[role='group'] > button {
+  border-radius: 0;
+}
+[role='group'] > button:first-child { border-radius: 8px 0 0 8px; }
+[role='group'] > button:last-child { border-radius: 0 8px 8px 0; }
+
+/* ── Homepage active-ticket shortcut ──────────────────────────────────── */
+.active-ticket-card {
+  text-decoration: none;
+  color: inherit;
+  border-color: var(--accent);
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.active-ticket-card .btn-accent { white-space: nowrap; }
+/* Narrow phones: the pill button no longer fits beside the text at full
+   size, so it drops to its own full-width row instead of wrapping its own
+   label mid-word. */
+@media (max-width: 420px) {
+  .active-ticket-card { flex-direction: column; align-items: stretch; }
+  .active-ticket-card .btn-accent { width: 100%; text-align: center; }
+}
+
+/* ── Restaurant cards: the NowServing badge, distinct from open/closed ─── */
+.badge-nowserving {
+  color: var(--accent);
+  border-color: var(--accent);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.venue-card-compact { padding: 14px 16px; }
+
+/* ── Skeleton loading cards — shown instead of blank space while the
+   first response is still in flight. ─────────────────────────────────── */
+.skeleton-card { overflow: hidden; }
+.skeleton-line {
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--border) 25%, #333 37%, var(--border) 63%);
+  background-size: 400% 100%;
+  animation: skeleton-shimmer 1.4s ease infinite;
+}
+@keyframes skeleton-shimmer {
+  0%   { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-line { animation: none; }
+}
+
+/* ── AppHeader — one header for customer AND owner ────────────────────────
+   Sized like a real product header rather than a row of tiny text links:
+   64px tall, full-bleed border, centred max-width content, 44px+ tap
+   targets, and a visible active state. Same height on every page so
+   navigating never shifts the content underneath. */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(10, 10, 10, 0.85);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+}
+.app-header-inner {
+  max-width: 1060px;
+  margin: 0 auto;
+  min-height: 64px;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.app-header-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+
+.app-header-brand {
+  font-family: var(--font-sans);
+  font-weight: 800;
+  font-size: 1.15rem;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  text-decoration: none;
+  white-space: nowrap;
+  /* The brand is the primary "go home" affordance on every screen, so it
+     gets a real tap target rather than just its glyph box. */
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+/* Never let the wordmark be squeezed by the nav — it used to shrink past
+   its own text and overlap the links at 375px. */
+.app-header-brand { flex-shrink: 0; }
+.app-header-brand em { color: var(--accent); font-style: normal; }
+.app-header-brand:hover { opacity: 0.85; }
+
+/* "Owner Console" next to the wordmark: says which half of the product you
+   are in without a second, competing logo. */
+.app-header-context {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.app-header-back {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0 14px;
+  min-height: 40px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  gap: 6px;
+  white-space: nowrap;
+}
+.app-header-back:hover { border-color: var(--accent); }
+/* Keeps the Back slot occupying its space on the homepage, where there is
+   nothing to go back to. `visibility` — NOT `display: none` — because the
+   whole point is that the brand beside it must not move: when this button
+   was conditionally removed the wordmark slid 95px left on the homepage, so
+   anyone who clicked the logo's remembered position on the next page hit
+   Back instead and reported the logo as unreliable. */
+.app-header-back.is-invisible { visibility: hidden; pointer-events: none; }
+
+.app-header-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.app-header-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 8px;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 0.94rem;
+  font-weight: 500;
+  white-space: nowrap;
+  background: transparent;
+  border: 1px solid transparent;
+}
+.app-header-link:hover { background: var(--panel-2, #161616); }
+.app-header-link.is-active { color: var(--accent); }
+.app-header-muted { color: var(--muted); font-weight: 400; }
+.app-header-ticket { color: var(--accent); font-weight: 600; }
+.app-header-logout { font-size: 0.94rem; cursor: pointer; }
+
+.app-header-business {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-left: 6px;
+}
+
+/* Phones: the header stays one row and stops competing for width — the
+   Back label collapses to its arrow, and secondary items shed padding
+   rather than wrapping onto a second line. */
+@media (max-width: 560px) {
+  .app-header-inner { padding: 0 12px; gap: 8px; min-height: 56px; }
+  /* Brand + Back + Restaurants + My Ticket + Owner Console does not fit on a
+     phone; something had to give, and the owner door is the right thing to
+     drop. Owners are a handful of people who bookmark /owner, while this
+     header is on every customer's screen — and the homepage footer still
+     carries "Run a restaurant?" for anyone who goes looking. */
+  .app-header-owner-link { display: none; }
+  .app-header-back-label { display: none; }
+  .app-header-back { padding: 0 12px; }
+  .app-header-link { padding: 0 8px; font-size: 0.88rem; }
+  .app-header-context,
+  .app-header-business { display: none; }
+  .app-header-brand { font-size: 1.02rem; }
+  /* Back + brand + Restaurants + My Ticket + Owner Console does not fit in
+     375px: Owner Console was still in the DOM but pushed off the right edge,
+     so it was unreachable rather than absent. Drop it deliberately on
+     phones — owners are a handful of people who bookmark the console, and
+     the homepage keeps its explicit "Run a restaurant?" door for them. */
+  .app-header-owner-link { display: none; }
+}
+
+/* The header is now a real element in the flow, so pages need breathing room
+   under it — and .center-page must stop reserving a FULL viewport height, or
+   every centred page gains a header's worth of scroll. */
+.shell { padding-top: 28px; }
+.center-page { min-height: calc(100dvh - 64px); }
+@media (max-width: 560px) {
+  .center-page { min-height: calc(100dvh - 56px); }
+}
+
+/* Visible keyboard focus everywhere — the amber ring matches the brand and
+   is the one accessibility affordance most easily lost in a dark theme. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+[role='group'] > button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* ── Owner settings ────────────────────────────────────────────────────── */
+
+/* A settings form is a reading-width document, not a dashboard — the owner
+   console's full width would strand the fields on one side of the screen. */
+.settings-page {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 32px clamp(16px, 4vw, 32px) 64px;
+}
+.settings-page .panel + .panel { margin-top: 20px; }
+
+/* Destructive actions get a red hairline so the section reads as different
+   in kind from the one above it, without shouting on a page you visit to do
+   something harmless most of the time. */
+.danger-zone { border-color: color-mix(in srgb, var(--danger) 40%, var(--border)); }
+.danger-warning {
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, var(--border));
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 0.88rem;
+  background: color-mix(in srgb, var(--danger) 7%, transparent);
+}
+.danger-warning ul { color: var(--muted); }
+.danger-zone .btn-danger:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* The owner's printable restaurant QR. */
+.qr-block { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+.qr-link {
+  color: var(--muted);
+  word-break: break-all;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Who's waiting, previewed on a dashboard queue card. */
+.queue-card-names {
+  margin-top: 6px;
+  font-size: 0.82rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Retired queues, folded out of the way but still reachable. */
+.archived-queues { margin-top: 6px; }
+.archived-queues summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 6px 0;
+  user-select: none;
+}
+.archived-queues summary::-webkit-details-marker { display: none; }
+.archived-queues summary::before { content: '▸ '; }
+.archived-queues[open] summary::before { content: '▾ '; }
+.archived-queues summary:hover { color: var(--text); }
+.archived-queue { background: transparent; opacity: 0.6; }
+.archived-queue:hover { opacity: 1; }
