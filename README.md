@@ -86,7 +86,7 @@ A queue is a small system with a surprising number of ways to go wrong. The part
 **Frontend** — React, TypeScript, Vite
 **Real-time** — WebSockets (STOMP) with Redis Pub/Sub for cross-instance fan-out
 **External** — TomTom (routing and traffic), OpenStreetMap via Overpass (nearby places)
-**Testing** — JUnit with Testcontainers, running against real Postgres and Redis. 137 backend tests currently pass.
+**Testing** — JUnit with Testcontainers, running against real Postgres and Redis. Current results belong to the [CI run](https://github.com/kirann05/nowserving-queue-platform/actions/workflows/ci.yml), not a hardcoded historical count.
 
 ## Architecture
 
@@ -107,7 +107,7 @@ External integrations sit behind interfaces (`TravelTimeProvider`, `PlacesProvid
 
 Tenant isolation is enforced by query shape, not by an `if` statement. Owner-scoped lookups take the business ID from the signed JWT and query `findByIdAndBusinessId(...)`, so another tenant's row simply isn't found. There is no endpoint that accepts a business ID from the client.
 
-More detail in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+More detail in [Architecture](docs/ARCHITECTURE.md), [API](docs/API.md), [Decisions](docs/DECISIONS.md), [Security](docs/SECURITY.md), and [Testing](docs/TESTING.md).
 
 ## Project structure
 
@@ -179,7 +179,7 @@ Everything below is optional — the core queue and reservation flows work witho
 
 ## Screenshots
 
-_To be added._
+Real application screens:
 
 | | |
 |---|---|
