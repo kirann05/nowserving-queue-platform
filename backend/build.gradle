@@ -56,7 +56,7 @@ dependencies {
 	// Circuit breaker (PRD §3.6). Used programmatically rather than via the
 	// Spring Boot starter: fewer version-coupling surprises, and the state
 	// machine stays visible in our own code instead of behind an annotation.
-	implementation 'io.github.resilience4j:resilience4j-circuitbreaker:2.3.0'
+	implementation 'io.github.resilience4j:resilience4j-circuitbreaker:2.4.0'
 
 	// Sprint 6 — observability. Actuator exposes health/metrics endpoints;
 	// micrometer-registry-prometheus renders them in the text format
