@@ -109,6 +109,8 @@ Tenant isolation is enforced by query shape, not by an `if` statement. Owner-sco
 
 More detail in [Architecture](docs/ARCHITECTURE.md), [API](docs/API.md), [Decisions](docs/DECISIONS.md), [Security](docs/SECURITY.md), and [Testing](docs/TESTING.md).
 
+[Sequence diagrams](docs/FLOWS.md) cover joining, advancing, cross-instance updates, and Leave Now. The [verified main-branch run](https://github.com/kirann05/nowserving-queue-platform/actions/runs/36164270337) passed 137 backend tests with none skipped; see the testing notes for scope and remaining gaps.
+
 ## Project structure
 
 ```

@@ -1,5 +1,9 @@
 # Testing
 
+## Verified run
+
+[Main-branch CI run 36164270337](https://github.com/kirann05/nowserving-queue-platform/actions/runs/36164270337), commit `8b37305`, passed on September 25, 2026: **137 tests across 20 JUnit XML reports, zero failures, errors, or skipped tests**. Frontend lint/build and the backend container build also passed. Frontend lint retains seven warnings. The compatible dependency update reports zero known npm audit advisories at the time of this check.
+
 ## Reproduce the checks
 
 With Java 21 and a running Docker engine:
