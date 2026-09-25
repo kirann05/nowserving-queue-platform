@@ -52,7 +52,7 @@ dependencies {
 	// Sprint 3. Web Push encryption + VAPID signing is genuinely hard crypto
 	// (ECDH, HKDF, AES-GCM) — not something to hand-roll. Zero transitive
 	// deps and uses the JDK's own HTTP client.
-	implementation 'com.interaso:webpush:1.2.0'
+	implementation 'com.interaso:webpush:1.3.0'
 	// Circuit breaker (PRD §3.6). Used programmatically rather than via the
 	// Spring Boot starter: fewer version-coupling surprises, and the state
 	// machine stays visible in our own code instead of behind an annotation.
